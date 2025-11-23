@@ -1,192 +1,273 @@
-# TailAdmin React - Free React Tailwind Admin Dashboard Template
+# CityFlow Predictability & Demand Dashboard
 
-TailAdmin is a free and open-source admin dashboard template built on **React and Tailwind CSS**, providing developers
-with everything they need to create a comprehensive, data-driven back-end,
-dashboard, or admin panel solution for upcoming web projects.
+CityFlow is an interactive dashboard that ties together three layers of your thesis:
 
-With TailAdmin, you get access to all the necessary dashboard UI components, elements, and pages required to build a
-feature-rich and complete dashboard or admin panel. Whether you're building dashboard or admin panel for a complex web
-application or a simple website, TailAdmin is the perfect solution to help you get up and running quickly.
+1. **Individual-level mobility predictability** (sparsity `q`, theoretical upper bound `Πmax`, radius of gyration `Rg`, weekly regularity `R`)
+2. **Next-POI recommendation benchmarks** on the Massive-STEPS dataset
+3. **T5-based city-level demand forecasting**, with a lightweight LLM (Gemini) explainer
 
-![TailAdmin React.js Dashboard Preview](./banner.png)
+The app is built on top of the **[TailAdmin Free React Tailwind Admin Dashboard](https://tailadmin.com/)** template (`free-react-tailwind-admin-dashboard`) and customised into a thesis-specific “CityFlow” portal.
 
-## Overview
+---
 
-TailAdmin provides essential UI components and layouts for building feature-rich, data-driven admin dashboards and
-control panels. It's built on:
+## 1. Features
 
-- React 19
-- TypeScript
-- Tailwind CSS
+### 1.1 Overview page
 
-### Quick Links
+High-level landing page that summarises the whole thesis:
 
-- [✨ Visit Website](https://tailadmin.com)
-- [📄 Documentation](https://tailadmin.com/docs)
-- [⬇️ Download](https://tailadmin.com/download)
-- [🖌️ Figma Design File (Community Edition)](https://www.figma.com/community/file/1214477970819985778)
-- [⚡ Get PRO Version](https://tailadmin.com/pricing)
+- **Key metrics card** – short explanations of `q`, `Πmax`, `Rg`, `R`, and Acc@1.
+- **Three summary cards**
+  - *Mobility Predictability*: 15 cities, median Πmax and qualitative variation.
+  - *POI Recommendation Benchmarks*: Acc@1 range across classic models.
+  - *T5 Demand Forecast*: 3 cities × 3 categories and the main findings.
+- **Cross-city predictability snapshot**
+  - Small selector for a representative city (Sydney/Tokyo/Jakarta/Bandung).
+  - Text showing mean Πmax, share of high-Πmax users, and a short profile.
+- **Model performance snapshot**
+  - Selector for NYC/Sydney/Tokyo/Moscow.
+  - Compares mean Πmax with Acc@1 of STHGCN and a T5/LLM-Move-style model.
 
-### Demos
+All cards link into the detailed pages.
 
-- [Free Version](https://free-react-demo.tailadmin.com/)
-- [Pro Version](https://react-demo.tailadmin.com)
+---
 
-### Other Versions
+### 1.2 Mobility Predictability page
 
-- [HTML Version](https://github.com/TailAdmin/tailadmin-free-tailwind-dashboard-template)
-- [Next.js Version](https://github.com/TailAdmin/free-nextjs-admin-dashboard)
-- [Vue.js Version](https://github.com/TailAdmin/vue-tailwind-admin-dashboard)
+**Route:** `/mobility-predictability`
 
-## Installation
+Interactive explorer for city-level mobility metrics (15 Massive-STEPS cities):
 
-### Prerequisites
+- **City selector** for all 15 cities.
+- **Metric definition card** explaining:
+  - `q` – sparsity / missing rate.
+  - `Πmax` – entropy-based theoretical upper bound on next-POI accuracy.
+  - `Rg (km)` – radius of gyration (spatial dispersion).
+  - `R` – weekly regularity (hours-of-week concentration).
+- **Metric cards** (per selected city):
+  - Median `q`
+  - Mean `Πmax`
+  - Median `Rg` (km)
+  - Median `R`
+  - Plus counts: total users, valid users, share of high-Πmax users, etc.
+- **Radar chart**
+  - Plots the four key metrics for **all 15 cities** in a single view.
+  - Tabbed UI allows you to compare the selected city with other profiles.
+- **City mobility profile**
+  - Short textual description mapping the city into one of the three qualitative profiles from the thesis
+    - “Local & regular”
+    - “More dispersed & mixed regularity”
+    - “Small / unstable sample”
 
-To get started with TailAdmin, ensure you have the following prerequisites installed and set up:
+All numbers are taken directly from the thesis tables.
 
-- Node.js 18.x or later (recommended to use Node.js 20.x or later)
+---
 
-### Cloning the Repository
+### 1.3 POI Benchmarks page
 
-Clone the repository using the following command:
+**Route:** `/poi-benchmarks`
+
+Visualisation of next-POI model benchmarks (Acc@1):
+
+- **Models covered**
+  - FPMC, RNN, LSTPM, DeepMove, GETNext, STHGCN, UniMove
+- **15-city × model Acc@1 table**
+  - Reproduced from the official Massive-STEPS benchmark.
+- **City-wise bar chart**
+  - For a selected city, shows Acc@1 of all models side by side.
+- **STHGCN vs. Πmax utilisation curve**
+  - For each city, plots `Acc@1(STHGCN) / Πmax(mean)` to visualise how close the best classic model gets to the theoretical upper bound.
+- **Narrative card**
+  - Explains how model performance interacts with Πmax and data sparsity.
+
+Again, this page intentionally mirrors exactly what is in the thesis (no new “mystery” metrics).
+
+---
+
+### 1.4 T5 Forecast (chat) page
+
+**Route:** `/t5-forecast`
+
+Chat-style interface that talks to your FastAPI backend and T5 models.
+
+- **Controls**
+  - City selector: `New York City`, `Sydney`, `Moscow`
+  - Category selector: `Bar`, `Coffee Shop`, `Metro Station` (or “all”)
+  - Model selector:
+    - `Baseline` (city-level model, always used when no category is picked)
+    - `Category fine-tune` (only enabled when city + category are both set)
+- **Chat interface**
+  - User writes a natural language query like  
+    `“Forecast bar demand in Sydney on Friday 8pm.”`
+  - Messages are sent to `/t5-chat` with the full history + controls.
+  - Response shows:
+    - The discrete T5 demand bucket (from your trained model)
+    - A short explanation generated by Gemini (rendered with Markdown).
+
+The LLM explainer is prompted to:
+
+- Treat the **T5 prediction as fixed** (never change the number/bucket).
+- Explain the result in simple business language for a non-technical store owner.
+- Optionally refer to high-level concepts (regularity, zero-heavy demand, cross-city transfer difficulty) without inventing new numeric metrics.
+
+---
+
+## 2. Tech Stack
+
+### Frontend
+
+- **React 18 + TypeScript**
+- **Tailwind CSS** (from TailAdmin template)
+- **React Router** for navigation
+- **ApexCharts (react-apexcharts)** for charts (bar, radar, line)
+- **react-markdown** to render Gemini’s explanation in Markdown
+- Dark-mode support inherited from TailAdmin
+
+### Backend
+
+- **FastAPI** (Python)
+- **Uvicorn** for local dev server
+- **transformers / Hugging Face Hub**
+  - T5-small sequence-to-sequence models
+  - Baseline city-level model + category-specific fine-tuned variants
+- **google-generativeai**
+  - Gemini API as a lightweight explanation layer
+- **python-dotenv**
+  - Automatically loads `api/.env` for HF and Gemini keys
+
+---
+
+## 3. Project Structure (simplified)
+
+```text
+free-react-tailwind-admin-dashboard/
+├─ public/
+│  └─ images/logo/        # Re-branded CityFlow SVG logos
+├─ src/
+│  ├─ components/
+│  │  └─ common/PageMeta.tsx
+│  ├─ pages/
+│  │  ├─ Dashboard/Home.tsx            # Overview page
+│  │  ├─ MobilityPredictability.tsx    # City mobility metrics
+│  │  ├─ POIBenchmarks.tsx             # POI benchmark visualisation
+│  │  └─ T5Forecast.tsx                # Chat-style T5 forecast UI
+│  └─ ...
+└─ api/
+   ├─ main.py               # FastAPI app, loads .env and registers routers
+   ├─ routes/
+   │  ├─ manifest.py        # Simple “what models exist” manifest (from earlier)
+   │  ├─ forecast.py        # Core T5 forecasting logic + /forecast endpoint
+   │  ├─ t5_chat.py         # /t5-chat endpoint (chat wrapper around T5)
+   │  └─ llm_explainer.py   # Gemini-based explanation helper
+   └─ .env                  # Backend env vars (HF + Gemini)
+````
+
+---
+
+## 4. Environment variables
+
+### 4.1 Frontend (`.env` at project root)
 
 ```bash
-git clone https://github.com/TailAdmin/free-react-tailwind-admin-dashboard.git
+# Optional: override if backend isn't on localhost:8000
+VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-> Windows Users: place the repository near the root of your drive if you face issues while cloning.
+### 4.2 Backend (`api/.env`)
 
-1. Install dependencies:
+```bash
+# Hugging Face
+HF_TOKEN=...                 # Access token for private repos
+HF_HOME=.hf_cache
+HF_HUB_CACHE=.hf_cache
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+# Gemini / Google Generative AI
+GOOGLE_API_KEY=...           # API key from Google AI Studio
+```
 
-   > Use the `--legacy-peer-deps` flag, if you face issues while installing.
+> **Important:** never commit real tokens or API keys to Git.
 
-2. Start the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+The backend loads `api/.env` automatically in `api/main.py` via `python-dotenv`.
 
-## Components
+---
 
-TailAdmin is a pre-designed starting point for building a web-based dashboard using React.js and Tailwind CSS. The
-template includes:
+## 5. Running the project locally
 
-- Sophisticated and accessible sidebar
-- Data visualization components
-- Prebuilt profile management and 404 page
-- Tables and Charts(Line and Bar)
-- Authentication forms and input elements
-- Alerts, Dropdowns, Modals, Buttons and more
-- Can't forget Dark Mode 🕶️
+### 5.1 Install dependencies
 
-All components are built with React and styled using Tailwind CSS for easy customization.
+```bash
+# 1. Install frontend dependencies
+npm install
 
-## Feature Comparison
+# 2. Create a virtualenv for the backend (optional but recommended)
+cd api
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-### Free Version
+# 3. Install Python dependencies
+pip install -r requirements.txt
+# If you don't have a requirements file, minimally:
+# pip install fastapi uvicorn transformers huggingface_hub python-dotenv google-generativeai
+```
 
-- 1 Unique Dashboard
-- 30+ dashboard components
-- 50+ UI elements
-- Basic Figma design files
-- Community support
+Create and fill in **`api/.env`** as described above.
 
-### Pro Version
+### 5.2 Run backend (FastAPI)
 
-- 7 Unique Dashboards: Analytics, Ecommerce, Marketing, CRM, SaaS, Stocks, Logistics (more coming soon)
-- 500+ dashboard components and UI elements
-- Complete Figma design file
-- Email support
+From the project root (or inside `api/`):
 
-To learn more about pro version features and pricing, visit our [pricing page](https://tailadmin.com/pricing).
+```bash
+cd api
+uvicorn api.main:app --reload --port 8000
+```
 
-## Changelog
+You should see logs for:
 
-### Version 2.0.2 - [March 25, 2025]
+* HF self-check (preloading the baseline T5 model)
+* Gemini setup (if `GOOGLE_API_KEY` is present)
 
-- Upgraded to React 19
-- Included overrides for packages to prevent peer dependency errors.
-- Migrated from react-flatpickr to flatpickr package for React 19 support
+Quick health check:
 
-### Version 2.0.1 - [February 27, 2025]
+```bash
+curl http://127.0.0.1:8000/ping
+# => {"msg":"pong"}
+```
 
-#### Update Overview
+### 5.3 Run frontend (Vite dev server)
 
-- Upgraded to Tailwind CSS v4 for better performance and efficiency.
-- Updated class usage to match the latest syntax and features.
-- Replaced deprecated class and optimized styles.
+In another terminal, from the project root:
 
-#### Next Steps
+```bash
+npm run dev
+```
 
-- Run npm install or yarn install to update dependencies.
-- Check for any style changes or compatibility issues.
-- Refer to the Tailwind CSS v4 [Migration Guide](https://tailwindcss.com/docs/upgrade-guide) on this release. if needed.
-- This update keeps the project up to date with the latest Tailwind improvements. 🚀
+Then open the URL printed in the console (usually `http://localhost:5173/`).
 
-### Version 2.0.0 - [February 2025]
+---
 
-A major update with comprehensive redesign and modern React patterns implementation.
+## 6. Deployment notes
 
-#### Major Improvements
+* **Frontend:** can be deployed to Vercel / Netlify / any static hosting, built with:
 
-- Complete UI redesign with modern React patterns
-- New features: collapsible sidebar, chat, and calendar
-- Improved performance and accessibility
-- Updated data visualization using ApexCharts
+  ```bash
+  npm run build
+  npm run preview   # optional local preview
+  ```
+* **Backend:** can be deployed to Render, Railway, or any service that supports a FastAPI app.
 
-#### Key Features
+  * Remember to set:
 
-- Redesigned dashboards (Ecommerce, Analytics, Marketing, CRM)
-- Enhanced navigation with React Router integration
-- Advanced tables with sorting and filtering
-- Calendar with drag-and-drop support
-- New UI components and improved existing ones
+    * `HF_TOKEN`, `HF_HOME`, `HF_HUB_CACHE`
+    * `GOOGLE_API_KEY`
+  * Update `VITE_API_BASE_URL` in the frontend build environment to point at the deployed API URL.
 
-#### Breaking Changes
+---
 
-- Updated sidebar component API
-- Migrated charts to ApexCharts
-- Revised authentication system
+## 7. Acknowledgements
 
-[Read more](https://tailadmin.com/docs/update-logs/react) on this release.
+* UI template based on **TailAdmin – Free React Tailwind Admin Dashboard**.
+* Mobility metrics and benchmark numbers from the **Massive-STEPS** dataset and your thesis analysis.
+* T5 demand forecasting model adapted from your PromptCast / T5 sequence-to-sequence setup.
+* LLM explanations powered by **Google Gemini** (via `google-generativeai`).
 
-### Version 1.3.7 - [June 20, 2024]
-
-#### Enhancements
-
-1. Remove Repetition of DefaultLayout in every Pages
-2. Add ClickOutside Component for reduce repeated functionality in Header Message, Notification and User Dropdowns.
-
-### Version 1.3.6 - [Jan 31, 2024]
-
-#### Enhancements
-
-1. Integrate flatpickr in [Date Picker/Form Elements]
-2. Change color after select an option [Select Element/Form Elements].
-3. Make it functional [Multiselect Dropdown/Form Elements].
-4. Make best value editable [Pricing Table One/Pricing Table].
-5. Rearrange Folder structure.
-
-### Version 1.2.0 - [Apr 28, 2023]
-
-- Add Typescript in TailAdmin React.
-
-### Version 1.0.0 - Initial Release - [Mar 13, 2023]
-
-- Initial release of TailAdmin React.
-
-## License
-
-TailAdmin React.js Free Version is released under the MIT License.
-
-## Support
-
-If you find this project helpful, please consider giving it a star on GitHub. Your support helps us continue developing
-and maintaining this template.
+This README is intentionally written so someone else (e.g. supervisor or examiner) can clone the repo, set a few environment variables, and understand how each dashboard page corresponds to sections in your thesis.
